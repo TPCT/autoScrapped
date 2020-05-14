@@ -1,0 +1,431 @@
+#!/usr/bin/env python3
+import traceback
+
+import multiprocessing
+import traceback
+
+
+class tacPhoneApi(multiprocessing.Process):
+    from requests import adapters
+    from os import path, stat
+    from requests.packages.urllib3 import Retry
+    from requests import Session
+    from random import randint, uniform
+    from time import sleep, time
+    from threading import Thread
+
+    class logger:
+        class log:
+            from sys import stdout
+            from threading import Thread
+
+            def __init__(self, website, logFile=None):
+
+                self.invalid = 0
+                self.valid = 0
+                self.finished = 0
+                self.status = 'preparing'
+                self.pooling = 'True'
+                self.proxies = 0
+                self.threads = 0
+                self.website = website
+                self.logFile = open(logFile, 'w+') if logFile else None
+                self.message = ''
+                self.stop = False
+                self.items = [item for item in dir(self)
+                              if not item.startswith('__')
+                              and item not in ('stdout', 'logFile', 'website',
+                                               'logFileWriter', 'stdoutWriter', 'message',
+                                               'messageData', 'clearResources', 'stdoutThread', 'Thread', 'stop')]
+                self.stdoutThread = self.Thread(target=self.stdoutWriter)
+                self.stdoutThread.start()
+
+            def __getitem__(self, key):
+                if key in self.items:
+                    return self.__getattribute__(key)
+
+            def __setitem__(self, key, value):
+                if key in self.items and value != self.__getattribute__(key):
+                    self.__setattr__(key, value)
+                    if key in ('finished', 'proxies', 'status'):
+                        message = 'Valid: %s - Invalid: %s - finished: %s - Proxies: %s - ' \
+                                  'Status: %s - Threads: %s - Pooling: %s - website: %s'
+                        self.message = message % (
+                            self.valid, self.invalid, self.finished, self.proxies, self.status, self.threads,
+                            self.pooling, self.website)
+                        self.logFileWriter(self.message)
+
+            def stdoutWriter(self, msg=['']):
+                while not self.stop:
+                    try:
+                        if not self.stdout.closed:
+                            if msg[0] != self.message:
+                                self.stdout.write('%s\n' % self.message)
+                                self.stdout.flush()
+                                msg[0] = self.message
+                    except KeyboardInterrupt:
+                        pass
+
+            def logFileWriter(self, message):
+                try:
+                    if self.logFile:
+                        if self.logFile.closed:
+                            self.logFile = open(self.logFile.name, 'a+')
+                        self.logFile.write('%s\n' % message)
+                        self.logFile.flush()
+                except KeyboardInterrupt:
+                    pass
+
+            def clearResources(self):
+                while not self.logFile.closed:
+                    try:
+                        self.logFile.close() if not self.logFile.closed else None
+                        self.stop = True
+                        self.stdoutThread.join()
+                    except KeyboardInterrupt:
+                        continue
+                    except Exception:
+                        pass
+
+        def __init__(self, website, errFilePath='err.txt', outputFilePath='log.txt',
+                     validFilePath='valid.txt', invalidFilePath='invalid.txt',
+                     finishedFilePath='finished.txt', responseFilePath='resp.txt', ):
+            self.errFile = open(errFilePath, 'w+') if errFilePath else None
+            self.invalidFile = open(invalidFilePath, 'w+') if invalidFilePath else None
+            self.finishedFile = open(finishedFilePath, 'w+') if finishedFilePath else None
+            self.responseFile = open(responseFilePath, 'w+') if responseFilePath else None
+            self.validFile = open(validFilePath, 'a+') if validFilePath else None
+            self.logging = self.log(logFile=outputFilePath, website=website)
+
+        def writeError(self, message):
+            try:
+                if self.errFile:
+                    if self.errFile.closed:
+                        self.errFile = open(self.errFile.name, 'a+')
+                    self.errFile.write('%s\n' % message)
+                    self.errFile.write(traceback.format_exc(limit=1, chain=False))
+                    self.errFile.flush()
+            except KeyboardInterrupt:
+                pass
+
+        def respWriter(self, message):
+            try:
+                if self.responseFile:
+                    if self.responseFile.closed:
+                        self.responseFile = open(self.responseFile.name, 'a+')
+                    self.responseFile.write('%s\n' % message)
+                    self.responseFile.flush()
+            except KeyboardInterrupt:
+                pass
+
+        def validWriter(self, account):
+            try:
+                if self.validFile:
+                    if self.validFile.closed:
+                        self.validFile = open(self.validFile.name, 'a+')
+                    self.validFile.write('%s\n' % account)
+                    self.validFile.flush()
+            except KeyboardInterrupt:
+                pass
+
+        def invalidWriter(self, account):
+            try:
+                if self.invalidFile:
+                    if self.invalidFile.closed:
+                        self.invalidFile = open(self.invalidFile.name, 'a+')
+                    self.invalidFile.write('%s\n' % account)
+                    self.invalidFile.flush()
+            except KeyboardInterrupt:
+                pass
+
+        def finishedWriter(self, account):
+            try:
+                if self.finishedFile:
+                    if self.finishedFile.closed:
+                        self.finishedFile = open(self.finishedFile.name, 'a+')
+                    self.finishedFile.write('%s\n' % account)
+                    self.finishedFile.flush()
+            except KeyboardInterrupt:
+                pass
+
+        def clearResources(self):
+            while not all([self.validFile.closed,
+                           self.invalidFile.closed,
+                           self.finishedFile.closed,
+                           self.responseFile.closed]):
+                try:
+                    self.validFile.close() if not self.validFile.closed else None
+                    self.invalidFile.close() if not self.invalidFile.closed else None
+                    self.finishedFile.close() if not self.finishedFile.closed else None
+                    self.responseFile.close() if not self.responseFile.closed else None
+                except KeyboardInterrupt:
+                    continue
+                except Exception:
+                    self.writeError('clearResources(logger)'.center(30, '-'))
+
+    def clearResources(self):
+        self.logging['status'] = 'Cleaning Resources'
+
+        while not self.accountsFile.closed:
+            try:
+                self.accountsFile.seek(0)
+                self.accountsFile.truncate()
+                self.accountsFile.writelines(self.accountsList)
+                self.accountsFile.close()
+            except KeyboardInterrupt:
+                pass
+            except Exception as e:
+                self.writer.writeError('clearResources(main)'.center(30, '-'))
+        try:
+            self.terminate()
+        except:
+            pass
+        self.writer.clearResources()
+        self.logging.clearResources()
+
+    def PoolWatcher(self):
+        try:
+            counter = 0
+            while True:
+                thread = self.Pool['Threads'][counter % len(self.Pool['Threads'])] if self.Pool['Threads'] \
+                    else None
+                if thread and not thread.is_alive():
+                    self.Pool['Threads'].remove(thread)
+                    self.logging['threads'] -= 1
+                elif thread and thread.is_alive():
+                    counter += 1
+                if self.checkedAll and not self.Pool['Threads']:
+                    break
+
+        except KeyboardInterrupt:
+            pass
+        except Exception as e:
+            self.writer.writeError('poolWatcher'.center(20, '-'))
+        self.clearResources()
+
+    def __init__(self, website, accountsPath='num.txt', proxiesPath='live.txt',
+                 validFileName='valid.txt', invalidFileName='invalid.txt', finishedFileName='finished.txt',
+                 logFileName='log.txt', errorFileName='err.txt', responseFileName='resp.txt',
+                 sleep=0, timeout=10, threads=10, background=True, headers=None):
+
+        # profileModule logger
+        self.writer = self.logger(website=website, errFilePath=errorFileName,
+                                  outputFilePath=logFileName if background else '',
+                                  validFilePath=validFileName, invalidFilePath=invalidFileName,
+                                  finishedFilePath=finishedFileName, responseFilePath=responseFileName)
+        # profileModule inputs
+        self.website = website.replace('www.', '')
+        self.accountsFile = accountsPath
+        self.proxiesFile = proxiesPath
+        self.Sleep = sleep
+        self.timeout = timeout
+        self.threadsNumber = threads
+        self.headers = dict(headers) if headers else dict()
+
+        # profileModule settings
+        self.logging = self.writer.logging
+        self.Pool = dict(Threads=[])
+        self.checkedAll = False
+        self.adapters.DEFAULT_RETRIES = self.Retry(total=10, connect=5, read=5, backoff_factor=sleep)
+        self.proxiesList = None
+        self.accountsList = None
+        self.proxiesCounter = 0
+        self.proxyCounter = 0
+
+        super().__init__()
+
+    def generateAccounts(self):
+        self.logging['status'] = 'generating accounts'
+        if self.path.exists(self.accountsFile) and self.stat(self.accountsFile).st_size != 0:
+            self.accountsFile = open(self.accountsFile, 'r+')
+            self.accountsList = list(set(self.accountsFile))
+            self.accountsFile.close()
+        else:
+            raise FileNotFoundError('Please enter valid accounts list path')
+
+    def generateProxies(self):
+        self.logging['status'] = 'generating proxies'
+        if self.proxiesFile.lower() == 'none':
+            self.proxiesCounter = 1
+            self.proxiesList = ['0.0.0.0:80']
+            self.logging['proxies'] = self.proxiesList.__len__()
+            return
+
+        if self.path.exists(self.proxiesFile) and self.stat(self.proxiesFile).st_size != 0:
+            file = open(self.proxiesFile)
+            self.proxiesList = list(set(file.readlines()))
+            self.proxiesCounter = len(self.proxiesList)
+            self.logging['proxies'] = self.proxiesCounter
+            file.close()
+        else:
+            raise FileNotFoundError('Please enter valid proxiesList path')
+
+    def generateSession(self, session: Session):
+        if session is None:
+            return None
+
+        userAgent = [
+            'Mozilla/5.0 (Windows NT %s; Win64; x64) '
+            'AppleWebKit/%s (KHTML, like Gecko) '
+            'Chrome/%s.%s.%s.135 Safari/%s Edge/%s' % (self.uniform(6, 10),
+                                                       self.uniform(200, 500),
+                                                       self.randint(20, 50),
+                                                       self.randint(0, 10),
+                                                       self.randint(1000, 3000), self.uniform(200, 500),
+                                                       self.uniform(10, 15)),
+            'Mozilla/%s (X%s; Ubuntu; Linux x86_64; rv:%s)'
+            ' Gecko/%s Firefox/%s.%s.%s' % (self.uniform(1, 10),
+                                            self.randint(1, 20),
+                                            self.randint(1, 20),
+                                            self.randint(20000000, 21000000), self.randint(1, 20), self.randint(1, 10),
+                                            self.randint(1, 20)),
+            'Mozilla/%s (Windows NT %s; WOW64) '
+            'AppleWebKit/%s (KHTML, like Gecko) '
+            'Chrome/%s.%s.%s.%s Safari/%s' % (self.uniform(1, 20), self.uniform(1, 20),
+                                              self.uniform(200, 500), self.randint(1, 50), self.randint(0, 10),
+                                              self.randint(1000, 2000), self.randint(100, 200),
+                                              self.uniform(200, 1000))]
+        session.headers['User-Agent'] = userAgent[self.randint(0, len(userAgent) - 1)]
+        session.headers.update(self.headers)
+
+        return session
+
+    def generateProxy(self):
+        result = self.proxiesList[self.proxyCounter % self.proxiesCounter] if self.proxiesCounter > 0 else None
+        self.proxyCounter += 1 if self.proxiesCounter > 0 else 0
+        return result
+
+    def checkerThread(self, account):
+        try:
+            account = account.strip()
+
+            if not account:
+                return
+
+            session = self.Session()
+            checked = None
+
+            while checked is None:
+                proxy = self.generateProxy()
+                if proxy:
+                    session.proxy = proxy.strip()
+                    proxiesSiteDict, proxy = self.checkProxy(session.proxy)
+                else:
+                    self.accountsList.append(account + '\n')
+                    self.logging['status'] = 'Blocked'
+                    return
+
+                for proxyType in proxiesSiteDict:
+                    self.logging['status'] = "%s %s" % (proxyType, proxy)
+                    session.proxies = proxiesSiteDict[proxyType]['proxy']
+                    session.website = proxiesSiteDict[proxyType]['website']
+                    session = self.generateSession(session)
+                    checked = self.checkAccount(account, session)
+
+                    if checked is None:
+                        continue
+                    elif checked:
+                        self.writer.validWriter(account)
+                        self.logging['valid'] += 1
+                    else:
+                        self.writer.invalidWriter(account)
+                        self.logging['invalid'] += 1
+                    break
+
+            self.writer.finishedWriter(account)
+            self.logging['finished'] += 1
+            self.sleep(self.Sleep)
+
+        except KeyboardInterrupt:
+            self.accountsList.append(account + '\n')
+        except Exception as e:
+            self.writer.writeError('%s Checker Thread %s'.center(10, '-'))
+            self.accountsList.append(account + '\n')
+
+    def checkProxy(self, proxy: str):
+        if not proxy:
+            return None
+        self.logging['status'] = 'Proxy %s' % proxy
+        proxiesSiteDict = dict()
+        proxiesSiteDict['http'] = dict(website=self.website,
+                                       proxy=dict(http='http://' + proxy, https='http://' + proxy)
+                                       if proxy != '0.0.0.0:80' else None)
+        proxiesSiteDict['https'] = dict(website=self.website,
+                                        proxy=dict(http='http://' + proxy, https='https://' + proxy)
+                                        if proxy != '0.0.0.0:80' else None)
+        proxiesSiteDict['socks4'] = dict(website=self.website.replace('www.', ''),
+                                         proxy=dict(http='socks4://' + proxy, https='socks4://' + proxy)
+                                         if proxy != '0.0.0.0:80' else None)
+        proxiesSiteDict['socks5'] = dict(website=self.website.replace('www.', ''),
+                                         proxy=dict(http='socks5://' + proxy, https='socks5://' + proxy)
+                                         if proxy != '0.0.0.0:80' else None)
+        return proxiesSiteDict, proxy
+
+    def checkAccount(self, account, session):
+        if not session or not self.proxiesList:
+            return None
+
+        self.logging['status'] = 'checking %s' % account
+
+        with session as session:
+            try:
+                 ''' Your test should go here do forget to set headers '''
+            except KeyboardInterrupt:
+                pass
+            except Exception as e:
+                self.writer.writeError('check account'.center(10, '-'))
+
+    def iterator(self):
+        poolRemover = None
+        try:
+            poolRemover = self.Thread(target=self.PoolWatcher)
+            poolRemover.start()
+            account = None
+            broken = False
+            while self.accountsList and not broken:
+                account = self.accountsList.pop(0)
+                if not account:
+                    continue
+                while self.proxiesCounter:
+                    try:
+                        if self.logging['threads'] < self.threadsNumber:
+                            self.logging['pooling'] = 'False'
+                            proxyThread = self.Thread(name=account.rstrip(),
+                                                      target=self.checkerThread, args=(account,))
+                            proxyThread.start()
+                            self.Pool['Threads'].append(proxyThread)
+                            self.logging['threads'] += 1
+                            break
+                        else:
+                            self.logging['pooling'] = 'True'
+                    except RuntimeError:
+                        self.logging['pooling'] = 'Waiting'
+                    except KeyboardInterrupt:
+                        broken = True
+                        break
+                    except Exception as e:
+                        self.writer.writeError('iterator'.center(10, '-'))
+                        broken = True
+                        break
+                else:
+                    print('all Proxies has been block')
+                    broken = True
+                    break
+            if broken:
+                self.accountsList.insert(0, account)
+            self.checkedAll = True
+        except KeyboardInterrupt:
+            raise
+        except Exception as e:
+            self.writer.writeError('iterator'.center(10, '-'))
+        self.checkedAll = True
+        poolRemover.join() if poolRemover else None
+
+    def start(self):
+        self.daemon = False
+        super().start()
+        self.generateProxies()
+        self.generateAccounts()
+        self.logging['status'] = 'starting PID:%s' % self.pid
+        self.logging['status'] = 'starting'
+        self.iterator()
